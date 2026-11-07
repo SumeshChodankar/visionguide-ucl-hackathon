@@ -1,0 +1,42 @@
+# Python & Virtual Environments
+.venv/
+venv/
+backend/.venv/
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# Environment Variables & Secrets
+.env
+backend/.env
+frontend/.env
+
+# SQLite Databases & WAL files
+*.db
+*.db-shm
+*.db-wal
+
+# Model Weights
+*.pt
+*.onnx
+
+# Node / Expo / React Native
+node_modules/
+frontend/node_modules/
+.expo/
+frontend/.expo/
+dist/
+web-build/
+npm-debug.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

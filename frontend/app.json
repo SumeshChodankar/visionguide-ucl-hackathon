@@ -1,0 +1,50 @@
+{
+  "expo": {
+    "name": "VisionGuide",
+    "slug": "visionguide",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#000000",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "org.visionguide.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "VisionGuide requires continuous camera access to detect obstacles, stairs, wet floor signs, and room plaques in real time.",
+        "NSMicrophoneUsageDescription": "VisionGuide uses the microphone for Push-to-Talk voice destination commands.",
+        "NSLocationWhenInUseUsageDescription": "VisionGuide uses your GPS location to provide turn-by-turn outdoor walking navigation to building entrances."
+      }
+    },
+    "android": {
+      "package": "org.visionguide.app",
+      "permissions": [
+        "CAMERA",
+        "RECORD_AUDIO",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "VIBRATE"
+      ]
+    },
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow VisionGuide to use your camera for obstacle detection and indoor room sign reading."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow VisionGuide to access your GPS location for outdoor walking navigation."
+        }
+      ],
+      [
+        "expo-av",
+        {
+          "microphonePermission": "Allow VisionGuide to access your microphone for Push-to-Talk voice commands."
+        }
+      ]
+    ]
+  }
+}
+

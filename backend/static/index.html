@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VisionGuide — Multi-Agent Assistive Navigation HUD</title>
+  <style>
+    :root {
+      --bg: #000000;
+      --card: #0d0d0d;
+      --yellow: #ffd600;
+      --cyan: #00e5ff;
+      --red: #ff1744;
+      --green: #00e676;
+      --orange: #ff9100;
+      --text: #ffffff;
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 24px;
+      border-bottom: 3px solid var(--yellow);
+      background: #050505;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .brand h1 {
+      font-size: 1.5rem;
+      font-weight: 900;
+      letter-spacing: 1px;
+      color: var(--yellow);
+    }
+    .badge {
+      background: #112233;
+      border: 2px solid var(--cyan);
+      color: var(--cyan);
+      padding: 4px 10px;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      font-weight: 800;
+    }
+    .header-links a {
+      color: var(--cyan);
+      font-weight: 800;
+      text-decoration: none;
+      margin-left: 16px;
+      font-size: 0.9rem;
+    }
+    main {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 440px 1fr;
+      gap: 20px;
+      padding: 20px;
+      max-width: 1440px;
+      width: 100%;
+      margin: 0 auto;
+    }
+    @media (max-width: 980px) {
+      main {
+        grid-template-columns: 1fr;
+      }
+    }
+    /* MOBILE HUD FRAME */
+    .phone-hud {
+      background: #050505;
+      border: 4px solid #333;
+      border-radius: 24px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      min-height: 720px;
+      position: relative;
+      box-shadow: 0 12px 40px rgba(0, 229, 255, 0.12);
+    }
+    .camera-stage {
+      position: relative;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 16px;
+      background: #080808;
+    }
+    video#webcam {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      opacity: 0.32;
+      pointer-events: none;
+    }
+    .hud-overlay {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      height: 100%;
+      justify-content: space-between;
+    }
+    .priority-banner {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 16px;
+      border-radius: 12px;
+      border: 3px solid var(--cyan);
+      background: #0a192f;
+      font-weight: 900;
+    }
+    .priority-banner.HIGH {
+      background: #4a000e;
+      border-color: var(--red);
+      animation: pulse 0.8s infinite alternate;
+    }
+    .priority-banner.MEDIUM {
+      background: #332200;
+      border-color: var(--yellow);
+    }
+    .priority-banner.ARRIVED {
+      background: #003319;
+      border-color: var(--green);
+    }
+    @keyframes pulse {
+      from { transform: scale(1); }
+      to { transform: scale(1.02); }
+    }
+    .telemetry-card {
+      background: rgba(13, 13, 13, 0.92);
+      border: 2px solid #333;
+      border-radius: 10px;
+      padding: 10px 14px;
+    }
+    .telemetry-label {
+      color: var(--cyan);
+      font-size: 0.72rem;
+      font-weight: 800;
+      letter-spacing: 1px;
+    }
+    .telemetry-value {
+      font-size: 1.15rem;
+      font-weight: 900;
+      margin-top: 2px;
+    }
+    .pill-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .pill {
+      background: rgba(13, 13, 13, 0.92);
+      border: 2px solid var(--cyan);
+      border-radius: 10px;
+      padding: 10px 12px;
+    }
+    .pill.yellow { border-color: var(--yellow); }
+    .pill.warning { border-color: var(--orange); background: #261400; }
+    .pill-val {
+      color: var(--yellow);
+      font-size: 1.4rem;
+      font-weight: 900;
+      margin-top: 2px;
+    }
+    .guidance-box {
+      background: rgba(0, 0, 0, 0.94);
+      border: 3px solid var(--yellow);
+      border-radius: 14px;
+      padding: 16px;
+      min-height: 130px;
+      cursor: pointer;
+    }
+    .guidance-header {
+      color: var(--cyan);
+      font-size: 0.75rem;
+      font-weight: 900;
+      letter-spacing: 1.2px;
+      margin-bottom: 6px;
+    }
+    .guidance-text {
+      font-size: 1.3rem;
+      line-height: 1.4;
+      font-weight: 900;
+      color: #fff;
+    }
+    .detections-strip {
+      background: rgba(17, 17, 17, 0.94);
+      border-radius: 10px;
+      padding: 10px 12px;
+      border-left: 5px solid var(--cyan);
+      font-size: 0.82rem;
+    }
+    .strip-title {
+      color: var(--yellow);
+      font-weight: 900;
+    }
+    .strip-sub {
+      color: #e0e0e0;
+      font-weight: 700;
+      margin-top: 4px;
+    }
+    .ptt-button {
+      height: 150px;
+      background: var(--yellow);
+      color: #000;
+      border: none;
+      border-top: 5px solid #fff;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      transition: background 0.15s;
+      user-select: none;
+    }
+    .ptt-button:active, .ptt-button.recording {
+      background: var(--cyan);
+    }
+    .ptt-main {
+      font-size: 1.9rem;
+      font-weight: 900;
+      letter-spacing: 1.5px;
+    }
+    .ptt-sub {
+      font-size: 0.85rem;
+      font-weight: 900;
+      margin-top: 6px;
+    }
+
+    /* RIGHT PANEL: MULTI-AGENT ORCHESTRATOR CONSOLE */
+    .console-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .panel-box {
+      background: #0b0b0b;
+      border: 2px solid #262626;
+      border-radius: 16px;
+      padding: 18px;
+    }
+    .panel-title {
+      color: var(--yellow);
+      font-size: 1rem;
+      font-weight: 900;
+      letter-spacing: 1px;
+      margin-bottom: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .scenario-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 10px;
+    }
+    .scenario-btn {
+      background: #141414;
+      color: #fff;
+      border: 2px solid var(--cyan);
+      border-radius: 10px;
+      padding: 12px;
+      font-size: 0.9rem;
+      font-weight: 800;
+      cursor: pointer;
+      text-align: left;
+      transition: transform 0.1s, background 0.15s;
+    }
+    .scenario-btn:hover {
+      background: #1f2937;
+    }
+    .scenario-btn.danger { border-color: var(--red); }
+    .scenario-btn.success { border-color: var(--green); }
+    .scenario-btn.warn { border-color: var(--yellow); }
+    .scenario-btn span {
+      display: block;
+      font-size: 0.75rem;
+      color: #aaa;
+      margin-top: 4px;
+      font-weight: 600;
+    }
+    .voice-input-row {
+      display: flex;
+      gap: 10px;
+      margin-top: 12px;
+    }
+    .voice-input-row input {
+      flex: 1;
+      background: #000;
+      border: 2px solid #444;
+      color: #fff;
+      padding: 12px 14px;
+      border-radius: 10px;
+      font-size: 1rem;
+      font-weight: 700;
+    }
+    .voice-input-row button {
+      background: var(--yellow);
+      color: #000;
+      border: none;
+      padding: 0 20px;
+      border-radius: 10px;
+      font-weight: 900;
+      cursor: pointer;
+    }
+    .agents-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+    }
+    .agent-card {
+      background: #050505;
+      border: 1px solid #2a2a2a;
+      border-left: 4px solid var(--cyan);
+      border-radius: 10px;
+      padding: 12px;
+    }
+    .agent-card h3 {
+      font-size: 0.85rem;
+      color: var(--cyan);
+      margin-bottom: 6px;
+    }
+    .agent-card pre {
+      font-family: Consolas, monospace;
+      font-size: 0.78rem;
+      color: #d4d4d4;
+      white-space: pre-wrap;
+      word-break: break-word;
+      max-height: 150px;
+      overflow-y: auto;
+    }
+    .controls-row {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+    .toggle-btn {
+      background: #1a1a1a;
+      color: var(--yellow);
+      border: 2px solid var(--yellow);
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-weight: 800;
+      cursor: pointer;
+      font-size: 0.8rem;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <h1>VISIONGUIDE</h1>
+      <span class="badge">MULTI-AGENT ASSISTIVE HUD</span>
+    </div>
+    <div class="header-links">
+      <a href="/docs" target="_blank">OpenAPI / Swagger Docs</a>
+      <a href="/health" target="_blank">System Health</a>
+    </div>
+  </header>
+
+  <main>
+    <!-- LEFT: HIGH-CONTRAST ACCESSIBLE MOBILE HUD -->
+    <section class="phone-hud" aria-label="VisionGuide Mobile Accessible HUD">
+      <div class="camera-stage">
+        <video id="webcam" autoplay playsinline muted></video>
+        <canvas id="captureCanvas" width="640" height="480" style="display:none;"></canvas>
+
+        <div class="hud-overlay">
+          <div id="priorityBanner" class="priority-banner" role="alert" aria-live="assertive">
+            <span id="bannerTitle">MODE: IDLE • 3.5S AUTO-SCAN</span>
+            <span id="latencyBadge" style="color: var(--yellow); font-size: 0.85rem;">0 ms</span>
+          </div>
+
+          <div style="display:flex; flex-direction:column; gap:8px;">
+            <div class="telemetry-card">
+              <div class="telemetry-label">ACTIVE DESTINATION</div>
+              <div id="hudDestination" class="telemetry-value">None (Hold PTT or pick scenario)</div>
+            </div>
+            <div class="pill-row">
+              <div class="pill">
+                <div class="telemetry-label">TARGET ROOM</div>
+                <div id="hudRoom" class="pill-val">--</div>
+              </div>
+              <div id="floorPill" class="pill yellow">
+                <div class="telemetry-label">FLOOR (NOW / GOAL)</div>
+                <div id="hudFloor" class="pill-val">F1 / --</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="guidance-box" id="guidanceBox" title="Click to repeat spoken audio guidance">
+            <div class="guidance-header">LIVE AUDIO GUIDANCE (CLICK TO REPEAT TTS)</div>
+            <div id="hudGuidance" class="guidance-text">
+              Welcome to VisionGuide. Hold the bottom Push-to-Talk button or trigger a scenario on the right.
+            </div>
+          </div>
+
+          <div class="detections-strip">
+            <div id="hudHazards" class="strip-title">YOLO HAZARDS: CLEAR (10–2 O'CLOCK)</div>
+            <div id="hudOcr" class="strip-sub">EASYOCR SIGNS: SCANNING PLAQUES & FLOOR INDICATORS...</div>
+          </div>
+        </div>
+      </div>
+
+      <button id="pttButton" class="ptt-button" aria-label="Hold to speak destination command">
+        <div id="pttMain" class="ptt-main">HOLD TO SPEAK</div>
+        <div id="pttSub" class="ptt-sub">PUSH-TO-TALK • WHISPER VOICE NAVIGATION</div>
+      </button>
+    </section>
+
+    <!-- RIGHT: INTERACTIVE SCENARIO SIMULATOR & MULTI-AGENT TELEMETRY -->
+    <section class="console-panel">
+      <div class="panel-box">
+        <div class="panel-title">
+          <span>INTERACTIVE OUTDOOR-TO-INDOOR JOURNEY SIMULATOR</span>
+          <div class="controls-row">
+            <button id="camBtn" class="toggle-btn">Enable Live Webcam</button>
+            <button id="scanToggleBtn" class="toggle-btn">Auto-Scan (3.5s): ON</button>
+            <button id="resetBtn" class="toggle-btn" style="border-color:var(--red);color:var(--red);">Reset Session</button>
+          </div>
+        </div>
+
+        <div class="scenario-grid">
+          <button class="scenario-btn" onclick="sendVoiceCommand('Take me to UCL Engineering Building, Room 443B')">
+            1. Voice Goal: Room 443B
+            <span>Infers Floor 4 from "443B" + fetches Google Maps walking route</span>
+          </button>
+
+          <button class="scenario-btn warn" onclick="runScenario('floor_mismatch')">
+            2. Enter Lobby (Floor 1 Mismatch)
+            <span>EasyOCR reads "Floor 1" & "Elevators ->" -> routes user to elevator</span>
+          </button>
+
+          <button class="scenario-btn danger" onclick="runScenario('high_hazard')">
+            3. HIGH Hazard @ 12 O'Clock
+            <span>YOLOv8n chair (0.9m) + Gemini Wet Floor -> urgent TTS interrupt</span>
+          </button>
+
+          <button class="scenario-btn success" onclick="runScenario('arrive_443b')">
+            4. Arrive at Room 443B (Floor 4)
+            <span>EasyOCR reads "Floor 4" & "Room 443B" plaque -> Arrival confirmed!</span>
+          </button>
+        </div>
+
+        <div class="voice-input-row">
+          <input
+            id="customVoiceInput"
+            type="text"
+            placeholder="Or type any voice command (e.g., 'Take me to Science Library Room 205A')..."
+            value="Take me to UCL Engineering Building, Room 443B"
+          />
+          <button onclick="sendCustomVoice()">Send Command</button>
+        </div>
+      </div>
+
+      <div class="panel-box" style="flex:1;">
+        <div class="panel-title">
+          <span>PARALLEL MULTI-AGENT ORCHESTRATION TELEMETRY (`asyncio.gather`)</span>
+          <span id="sessionBadge" style="font-size:0.8rem;color:var(--cyan);">Session: web-hud-user</span>
+        </div>
+
+        <div class="agents-grid">
+          <div class="agent-card">
+            <h3>1. HazardAgent (Ultralytics YOLOv8n)</h3>
+            <pre id="hazardJson">Waiting for frame...</pre>
+          </div>
+          <div class="agent-card">
+            <h3>2. OCRAgent (EasyOCR Spatial Reader)</h3>
+            <pre id="ocrJson">Waiting for frame...</pre>
+          </div>
+          <div class="agent-card">
+            <h3>3. VisionAgent (Gemini 2.5 Flash)</h3>
+            <pre id="visionJson">Waiting for frame...</pre>
+          </div>
+          <div class="agent-card">
+            <h3>4. NavigationAgent & Session State</h3>
+            <pre id="navJson">Waiting for command...</pre>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const SESSION_ID = "web-hud-user";
+    let autoScan = true;
+    let webcamStream = null;
+    let lastSpoken = "";
+
+    function speakText(text, interrupt = false) {
+      if (!text || !("speechSynthesis" in window)) return;
+      if (!interrupt && text === lastSpoken) return;
+      lastSpoken = text;
+      if (interrupt) {
+        window.speechSynthesis.cancel();
+      }
+      const utter = new SpeechSynthesisUtterance(text);
+      utter.rate = interrupt ? 1.08 : 1.0;
+      window.speechSynthesis.speak(utter);
+    }
+
+    document.getElementById("guidanceBox").addEventListener("click", () => {
+      const text = document.getElementById("hudGuidance").innerText;
+      lastSpoken = "";
+      speakText(text, true);
+    });
+
+    function updateHUD(data, forceSpeak = false) {
+      const priority = data.hazard_priority || "NONE";
+      const banner = document.getElementById("priorityBanner");
+      banner.className = "priority-banner";
+      if (priority === "HIGH") banner.classList.add("HIGH");
+      else if (priority === "MEDIUM") banner.classList.add("MEDIUM");
+      else if (data.arrived) banner.classList.add("ARRIVED");
+
+      const navMode = data.navigation_mode || (data.session && data.session.navigation_mode) || "IDLE";
+      document.getElementById("bannerTitle").innerText =
+        priority === "HIGH"
+          ? "URGENT HAZARD IN PATH"
+          : data.arrived
+          ? "DESTINATION ARRIVED"
+          : `MODE: ${navMode} • AUTO-SCAN ${autoScan ? "ON" : "OFF"}`;
+
+      const latMs = data.total_latency_ms ?? data.latency_ms ?? 0;
+      document.getElementById("latencyBadge").innerText = `${Math.round(latMs)} ms`;
+
+      const session = data.session || data;
+      document.getElementById("hudDestination").innerText =
+        session.destination_building || session.active_goal || "None (Hold PTT or pick scenario)";
+      document.getElementById("hudRoom").innerText = session.target_room || "--";
+
+      const curF = session.current_floor ?? 1;
+      const tgtF = session.target_floor !== null && session.target_floor !== undefined ? `F${session.target_floor}` : "--";
+      document.getElementById("hudFloor").innerText = `F${curF} / ${tgtF}`;
+
+      const floorPill = document.getElementById("floorPill");
+      floorPill.className = data.floor_mismatch ? "pill warning" : "pill yellow";
+
+      if (data.spoken_guidance) {
+        document.getElementById("hudGuidance").innerText = data.spoken_guidance;
+        speakText(data.spoken_guidance, Boolean(data.interrupt_speech) || forceSpeak);
+      }
+
+      if (data.agents) {
+        const hazards = data.agents.hazard?.hazards || [];
+        document.getElementById("hudHazards").innerText =
+          "YOLO HAZARDS: " +
+          (hazards.length
+            ? hazards.map((h) => `${h.object.toUpperCase()} @ ${h.clock_direction} (${h.distance_meters}m)`).join(" | ")
+            : "CLEAR (10–2 O'CLOCK)");
+
+        const texts = data.agents.ocr?.texts || [];
+        document.getElementById("hudOcr").innerText =
+          "EASYOCR SIGNS: " +
+          (texts.length
+            ? texts.map((t) => `"${t.text}" [${t.spatial_tag.toUpperCase()}]`).join(" • ")
+            : "NO SIGNS IN CURRENT FRAME");
+
+        document.getElementById("hazardJson").innerText = JSON.stringify(data.agents.hazard, null, 2);
+        document.getElementById("ocrJson").innerText = JSON.stringify(data.agents.ocr, null, 2);
+        document.getElementById("visionJson").innerText = JSON.stringify(data.agents.vision, null, 2);
+        document.getElementById("navJson").innerText = JSON.stringify(
+          {
+            navigation_mode: data.navigation_mode,
+            current_floor: data.current_floor,
+            target_floor: data.target_floor,
+            floor_mismatch: data.floor_mismatch,
+            arrived: data.arrived,
+            navigation: data.agents.navigation,
+          },
+          null,
+          2
+        );
+      } else if (data.session) {
+        document.getElementById("navJson").innerText = JSON.stringify(data.session, null, 2);
+      }
+    }
+
+    async function sendVoiceCommand(transcriptText) {
+      const fd = new FormData();
+      fd.append("session_id", SESSION_ID);
+      fd.append("lat", "51.5246");
+      fd.append("lng", "-0.1340");
+      fd.append("transcript_override", transcriptText);
+
+      const res = await fetch("/api/v1/voice-command", { method: "POST", body: fd });
+      const data = await res.json();
+      updateHUD(data, true);
+    }
+
+    function sendCustomVoice() {
+      const val = document.getElementById("customVoiceInput").value.trim();
+      if (val) sendVoiceCommand(val);
+    }
+
+    async function analyzeFrame(simulatedOverrides = null) {
+      const fd = new FormData();
+      fd.append("session_id", SESSION_ID);
+      fd.append("lat", "51.5246");
+      fd.append("lng", "-0.1340");
+
+      if (webcamStream && !simulatedOverrides) {
+        const video = document.getElementById("webcam");
+        const canvas = document.getElementById("captureCanvas");
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const dataUrl = canvas.toDataURL("image/jpeg", 0.5);
+        fd.append("frame_base64", dataUrl);
+      }
+
+      if (simulatedOverrides) {
+        fd.append("simulated_overrides_json", JSON.stringify(simulatedOverrides));
+      }
+
+      try {
+        const res = await fetch("/api/v1/analyze-frame", { method: "POST", body: fd });
+        if (res.ok) {
+          const data = await res.json();
+          updateHUD(data, Boolean(simulatedOverrides));
+        }
+      } catch (e) {
+        console.warn("Analyze frame error:", e);
+      }
+    }
+
+    function runScenario(name) {
+      if (name === "floor_mismatch") {
+        analyzeFrame({
+          ocr_items: [
+            { text: "Floor 1", confidence: 0.97, x_center_norm: 0.25 },
+            { text: "Elevators ->", confidence: 0.95, x_center_norm: 0.75 },
+          ],
+          vision_result: {
+            wet_floor_or_spill: false,
+            glass_entrance_detected: true,
+            elevator_detected: true,
+            elevator_direction: "right",
+            detected_floor_number: 1,
+            scene_summary: "Entered main building lobby on Floor 1; elevators visible on the right.",
+          },
+        });
+      } else if (name === "high_hazard") {
+        analyzeFrame({
+          yolo_detections: [
+            { class_name: "chair", confidence: 0.94, bbox: [240, 220, 400, 465] },
+          ],
+          vision_result: {
+            wet_floor_or_spill: true,
+            surface_hazard_description: "Yellow wet floor warning cone and water spill",
+            scene_summary: "Obstacle and wet floor directly ahead at 12 o'clock.",
+          },
+        });
+      } else if (name === "arrive_443b") {
+        analyzeFrame({
+          ocr_items: [
+            { text: "Floor 4", confidence: 0.98, x_center_norm: 0.2 },
+            { text: "Room 443B", confidence: 0.99, x_center_norm: 0.5 },
+          ],
+          vision_result: {
+            wet_floor_or_spill: false,
+            detected_floor_number: 4,
+            scene_summary: "Corridor on Floor 4 directly in front of Room 443B plaque.",
+          },
+        });
+      }
+    }
+
+    // Webcam toggle
+    document.getElementById("camBtn").addEventListener("click", async () => {
+      const btn = document.getElementById("camBtn");
+      if (webcamStream) {
+        webcamStream.getTracks().forEach((t) => t.stop());
+        webcamStream = null;
+        btn.innerText = "Enable Live Webcam";
+        return;
+      }
+      try {
+        webcamStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+        document.getElementById("webcam").srcObject = webcamStream;
+        btn.innerText = "Webcam: ACTIVE";
+      } catch (err) {
+        alert("Webcam permission denied or unavailable: " + err.message);
+      }
+    });
+
+    // Auto-scan 3.5s loop toggle
+    document.getElementById("scanToggleBtn").addEventListener("click", () => {
+      autoScan = !autoScan;
+      document.getElementById("scanToggleBtn").innerText = `Auto-Scan (3.5s): ${autoScan ? "ON" : "OFF"}`;
+    });
+
+    // Reset session
+    document.getElementById("resetBtn").addEventListener("click", async () => {
+      const res = await fetch("/api/v1/reset-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ session_id: SESSION_ID }),
+      });
+      const data = await res.json();
+      updateHUD(data, true);
+    });
+
+    // Push-to-Talk via Browser SpeechRecognition (with fallback to input box)
+    const pttButton = document.getElementById("pttButton");
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    let recognition = null;
+    if (SpeechRecognition) {
+      recognition = new SpeechRecognition();
+      recognition.lang = "en-US";
+      recognition.interimResults = false;
+      recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        document.getElementById("customVoiceInput").value = transcript;
+        sendVoiceCommand(transcript);
+      };
+    }
+
+    pttButton.addEventListener("mousedown", () => {
+      pttButton.classList.add("recording");
+      document.getElementById("pttMain").innerText = "LISTENING... RELEASE TO SEND";
+      if (recognition) {
+        try { recognition.start(); } catch (e) {}
+      }
+    });
+
+    pttButton.addEventListener("mouseup", () => {
+      pttButton.classList.remove("recording");
+      document.getElementById("pttMain").innerText = "HOLD TO SPEAK";
+      if (recognition) {
+        try { recognition.stop(); } catch (e) {}
+      } else {
+        sendCustomVoice();
+      }
+    });
+
+    setInterval(() => {
+      if (autoScan) analyzeFrame(null);
+    }, 3500);
+  </script>
+</body>
+</html>
+
