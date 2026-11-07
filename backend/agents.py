@@ -1173,11 +1173,12 @@ class ReasoningAgent:
             else:
                 nav_mode = "OUTDOOR"
 
-        # Build Floor Reasoning Directive
+        # Build Floor Reasoning Directive (active once inside or at building entrance)
         floor_mismatch = (
             target_floor is not None
             and current_floor is not None
             and current_floor != target_floor
+            and nav_mode in ("ELEVATOR_SEEK", "INDOOR_TRANSIT")
         )
         floor_directive = None
         if floor_mismatch and not arrived:
